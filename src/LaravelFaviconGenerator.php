@@ -111,7 +111,13 @@ class LaravelFaviconGenerator
         $tempImages = [];
 
         foreach ($sizes as $size) {
-            $tempPath = sys_get_temp_dir()."/favicon_{$size}.png";
+            // uniqid(), not just $size, in the filename: two overlapping generate() calls
+            // (e.g. a build and a dev-server file watcher both regenerating around the same
+            // moment) would otherwise share this exact path and race on it — one process's
+            // own cleanup unlink() removing the file the other is still reading. Confirmed
+            // live: file_get_contents() failing with "No such file or directory" on this
+            // exact path when that happened.
+            $tempPath = sys_get_temp_dir().'/favicon_'.$size.'_'.uniqid().'.png';
 
             // Use direct GD functions for maximum quality
             $this->createHighQualityPng($sourceImage, $size, $tempPath);
