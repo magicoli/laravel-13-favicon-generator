@@ -1,13 +1,16 @@
 {{-- Favicon Meta Tags Component --}}
-<link rel="icon" type="image/png" href="{{ asset('favicon/favicon-96x96.png') }}" sizes="96x96" />
-<link rel="icon" type="image/svg+xml" href="{{ asset('favicon/favicon.svg') }}" />
-<link rel="shortcut icon" href="{{ asset('favicon/favicon.ico') }}" />
-<link rel="apple-touch-icon" sizes="180x180" href="{{ asset('favicon/apple-touch-icon.png') }}" />
-<link rel="manifest" href="{{ asset('favicon/site.webmanifest') }}" />
+@php
+    $faviconPath = config('favicon-generator.output_path', 'favicon');
+@endphp
+<link rel="icon" type="image/png" href="{{ asset("{$faviconPath}/favicon-96x96.png") }}" sizes="96x96" />
+<link rel="icon" type="image/svg+xml" href="{{ asset("{$faviconPath}/favicon.svg") }}" />
+<link rel="shortcut icon" href="{{ asset("{$faviconPath}/favicon.ico") }}" />
+<link rel="apple-touch-icon" sizes="180x180" href="{{ asset("{$faviconPath}/apple-touch-icon.png") }}" />
+<link rel="manifest" href="{{ asset("{$faviconPath}/site.webmanifest") }}" />
 
 {{-- Web App Title Meta Tags --}}
 @php
-    $manifestPath = public_path('favicon/site.webmanifest');
+    $manifestPath = public_path("{$faviconPath}/site.webmanifest");
     $appName = '';
     $shortName = '';
 
