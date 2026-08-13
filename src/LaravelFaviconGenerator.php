@@ -31,6 +31,42 @@ class LaravelFaviconGenerator
     }
 
     /**
+     * Decode an image from a file path — ImageManager::read() (Intervention Image v3) was
+     * renamed to decodePath() in v4, no alias either direction, so this package supporting
+     * both v3 and v4 (see composer.json) needs to pick the one that actually exists at
+     * runtime rather than calling either name unconditionally.
+     */
+    protected function decodeImage(string $path): ImageInterface
+    {
+        return method_exists($this->imageManager, 'decodePath')
+            ? $this->imageManager->decodePath($path)
+            : $this->imageManager->read($path);
+    }
+
+    /**
+     * Create a blank canvas — ImageManager::create() (v3) was renamed to createImage() in
+     * v4. See decodeImage()'s own docblock for why this can't just call one name.
+     */
+    protected function createCanvas(int $width, int $height): ImageInterface
+    {
+        return method_exists($this->imageManager, 'createImage')
+            ? $this->imageManager->createImage($width, $height)
+            : $this->imageManager->create($width, $height);
+    }
+
+    /**
+     * Composite $image onto $canvas at the given position — ImageInterface::place() (v3)
+     * was renamed to insert() in v4, with a different argument order. See decodeImage()'s
+     * own docblock for why this can't just call one name.
+     */
+    protected function compositeImage(ImageInterface $canvas, ImageInterface $image, int $x, int $y): ImageInterface
+    {
+        return method_exists($canvas, 'insert')
+            ? $canvas->insert($image, $x, $y)
+            : $canvas->place($image, 'top-left', $x, $y);
+    }
+
+    /**
      * Generate all favicons from a source image
      *
      * @param  string  $sourceImagePath  Path to the source image
@@ -46,7 +82,7 @@ class LaravelFaviconGenerator
         $this->generatedFiles = [];
         $this->ensureOutputDirectoryExists();
 
-        $sourceImage = $this->imageManager->read($sourceImagePath);
+        $sourceImage = $this->decodeImage($sourceImagePath);
 
         // Generate each favicon type
         $this->generateIcoFavicon($sourceImage);
@@ -217,7 +253,7 @@ SVG;
             } else {
                 // For smaller icons, use the standard approach
                 $resizedImage = $this->createExactSizeImage($sourceImage, $size, $size);
-                $resizedImage->toPng(interlaced: false, indexed: false)->save($outputPath);
+                $resizedImage->save($outputPath);
             }
 
             $this->generatedFiles[] = "{$this->outputPath}/{$filename}";
@@ -384,7 +420,7 @@ SVG;
     protected function createExactSizeImage(ImageInterface $sourceImage, int $width, int $height): ImageInterface
     {
         // First, create a blank canvas with the exact dimensions (transparent background)
-        $canvas = $this->imageManager->create($width, $height);
+        $canvas = $this->createCanvas($width, $height);
 
         // Get the source image dimensions
         $sourceWidth = $sourceImage->width();
@@ -415,7 +451,7 @@ SVG;
         $posY = (int) (($height - $newHeight) / 2);
 
         // Place the resized image on the canvas
-        return $canvas->place($resizedImage, 'top-left', $posX, $posY);
+        return $this->compositeImage($canvas, $resizedImage, $posX, $posY);
     }
 
     /**
@@ -432,7 +468,7 @@ SVG;
         if (! extension_loaded('imagick')) {
             // Fallback to Intervention Image if Imagick is not available
             $resizedImage = $this->createExactSizeImage($sourceImage, $size, $size);
-            $resizedImage->toPng(interlaced: false, indexed: false)->save($outputPath);
+            $resizedImage->save($outputPath);
 
             return;
         }
@@ -440,7 +476,7 @@ SVG;
         try {
             // Get the source image as a temporary file
             $tempSourcePath = sys_get_temp_dir().'/source_image_'.uniqid().'.png';
-            $sourceImage->toPng()->save($tempSourcePath);
+            $sourceImage->save($tempSourcePath);
 
             // Create a new Imagick instance
             $imagick = new \Imagick($tempSourcePath);
@@ -498,7 +534,7 @@ SVG;
         } catch (\Exception $e) {
             // Fallback to Intervention Image if Imagick fails
             $resizedImage = $this->createExactSizeImage($sourceImage, $size, $size);
-            $resizedImage->toPng(interlaced: false, indexed: false)->save($outputPath);
+            $resizedImage->save($outputPath);
         }
     }
 
